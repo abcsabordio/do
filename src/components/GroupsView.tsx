@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, HTMLAttributes, ReactNode } from 'react'
 import {
   DndContext,
@@ -18,7 +18,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { restrictToVerticalAxis, snapCenterToCursor } from '@dnd-kit/modifiers'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../data/store'
 import type { Task, TaskGroup } from '../types'
@@ -69,9 +69,19 @@ export default function GroupsView() {
   // instead of one per group). Each group's list starts from these.
   const [tasksByGroup, setTasksByGroup] = useState<Map<string, Task[]>>(new Map())
 
-  // The group being dragged. While set, every group shows only its header,
-  // so the list is short and easy to reorder; they reopen on drop.
+  // Reordering. While a group's handle is held (grabbedId) or it's being
+  // dragged (draggingId), every group shows only its header, so the list is
+  // short and easy to reorder; they reopen on drop.
+  //
+  // The collapse happens on press, *before* the drag starts, and the page is
+  // scrolled so the held header stays exactly under the finger. That way the
+  // drag starts from a settled layout and the card lands where it's dropped.
+  // (Collapsing after the drag started left the drag measuring the old,
+  // taller layout, so groups landed in the wrong place.)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [grabbedId, setGrabbedId] = useState<string | null>(null)
+  const grabTop = useRef(0)
+  const sorting = grabbedId !== null || draggingId !== null
   const sensors = useSensors(
     // Small distance so a tap on the handle isn't treated as a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -206,6 +216,23 @@ export default function GroupsView() {
 
   // ---------- Reordering groups ----------
 
+  /** Handle pressed: remember where it is on screen, then collapse. */
+  function grab(id: string, handle: HTMLElement) {
+    grabTop.current = handle.getBoundingClientRect().top
+    setGrabbedId(id)
+    // Let go without dragging (just a tap): reopen everything.
+    const release = () => setGrabbedId(null)
+    window.addEventListener('pointerup', release, { once: true })
+    window.addEventListener('pointercancel', release, { once: true })
+  }
+
+  // After collapsing, scroll so the held handle is back under the finger.
+  useLayoutEffect(() => {
+    if (!grabbedId) return
+    const handle = document.querySelector(`#group-${grabbedId} .drag-handle`)
+    if (handle) window.scrollBy({ top: handle.getBoundingClientRect().top - grabTop.current, behavior: 'instant' })
+  }, [grabbedId])
+
   function handleDragStart({ active }: DragStartEvent) {
     setDraggingId(String(active.id))
   }
@@ -213,6 +240,7 @@ export default function GroupsView() {
   async function handleDragEnd({ active, over }: DragEndEvent) {
     const movedId = String(active.id)
     setDraggingId(null)
+    setGrabbedId(null)
     // Once the groups have reopened, bring the moved one back into view.
     requestAnimationFrame(() =>
       document.getElementById(`group-${movedId}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -305,10 +333,15 @@ export default function GroupsView() {
             measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDragCancel={() => setDraggingId(null)}
+            onDragCancel={() => {
+              setDraggingId(null)
+              setGrabbedId(null)
+            }}
+            // Only scroll the page when the card is pushed right to the edge.
+            autoScroll={{ threshold: { x: 0, y: 0.1 } }}
           >
             <SortableContext items={ordered.map((g) => g.id)} strategy={verticalListSortingStrategy}>
-              <div className={`group-stack${draggingId ? ' sorting' : ''}`}>
+              <div className={`group-stack${sorting ? ' sorting' : ''}`}>
                 {ordered.map((g) => {
                   const open = !collapsed.has(g.id)
                   const bodyId = `group-body-${g.id}`
@@ -326,11 +359,12 @@ export default function GroupsView() {
                             selected={selected}
                             onToggle={() => (selectingGroups ? toggleSelected(g.id) : toggleCollapsed(g.id))}
                             onLongPress={() => toggleSelected(g.id)}
+                            onGrab={(el) => grab(g.id, el)}
                             onDelete={() => setToDelete(g)}
                           />
                           {/* Collapsed groups stay mounted (just hidden), so their
                               tasks don't need loading again when reopened. */}
-                          <div id={bodyId} className="group-section-body" hidden={!open || draggingId !== null}>
+                          <div id={bodyId} className="group-section-body" hidden={!open || sorting}>
                             <TaskList
                               groupId={g.id}
                               compact
@@ -347,10 +381,8 @@ export default function GroupsView() {
               </div>
             </SortableContext>
 
-            {/* What follows your finger while dragging: just the header.
-                The groups collapse as the drag starts, so the card is pinned
-                to the pointer rather than to where the header used to be. */}
-            <DragOverlay modifiers={[snapCenterToCursor, restrictToVerticalAxis]}>
+            {/* What follows your finger while dragging: just the header. */}
+            <DragOverlay modifiers={[restrictToVerticalAxis]}>
               {dragged && (
                 <section className="group-section drag-overlay">
                   <GroupHeader group={dragged} open={false} bodyId="" />
@@ -466,6 +498,7 @@ function GroupHeader({
   selected = false,
   onToggle,
   onLongPress,
+  onGrab,
   onDelete,
 }: {
   group: TaskGroup
@@ -476,6 +509,7 @@ function GroupHeader({
   selected?: boolean
   onToggle?: () => void
   onLongPress?: () => void
+  onGrab?: (handle: HTMLElement) => void
   onDelete?: () => void
 }) {
   const longPress = useLongPress(() => onLongPress?.())
@@ -499,6 +533,10 @@ function GroupHeader({
           aria-label={`Move group "${group.name}"`}
           title="Drag to reorder"
           {...handle?.props}
+          onPointerDown={(e) => {
+            if (e.button === 0) onGrab?.(e.currentTarget)
+            handle?.props.onPointerDown?.(e)
+          }}
         >
           <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
             {[4, 8, 12].map((y) => (
