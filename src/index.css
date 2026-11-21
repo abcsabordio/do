@@ -168,14 +168,6 @@ input {
   min-width: 0;
 }
 
-.who-email {
-  color: var(--muted);
-  font-size: 0.875rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
-}
 
 .badge {
   padding: 3px 10px;
@@ -313,19 +305,6 @@ input {
 /* A close / cancel × that shouldn't look destructive */
 .icon-btn.plain:hover {
   background: var(--surface-3);
-  color: var(--ink);
-}
-
-.btn.icon-only {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  width: 46px;
-  flex-shrink: 0;
-  color: var(--muted);
-}
-
-.btn.icon-only:hover {
   color: var(--ink);
 }
 
@@ -481,8 +460,7 @@ input {
 
 /* ---------- Task list ---------- */
 
-.task-list,
-.group-list {
+.task-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -491,8 +469,7 @@ input {
   border-radius: var(--radius);
 }
 
-.task,
-.group {
+.task {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -500,8 +477,7 @@ input {
   border-bottom: 1px solid var(--line);
 }
 
-.task:last-child,
-.group:last-child {
+.task:last-child {
   border-bottom: 0;
 }
 
@@ -731,27 +707,6 @@ input {
 
 /* ---------- Groups ---------- */
 
-.group {
-  padding: 0 8px 0 0;
-}
-
-.group-open {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: none;
-  border: 0;
-  padding: 14px 0 14px 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.group-open:hover .group-name {
-  color: var(--accent-text);
-}
-
 .group-name {
   font-weight: 600;
 }
@@ -759,16 +714,6 @@ input {
 .group-count {
   color: var(--muted);
   font-size: 0.875rem;
-}
-
-.group-head {
-  margin-bottom: 16px;
-}
-
-.group-head h2 {
-  margin: 4px 0 0;
-  font-size: 1.375rem;
-  letter-spacing: -0.01em;
 }
 
 /* ---------- Messages and empty states ---------- */
@@ -1175,44 +1120,11 @@ section.selecting {
   margin-top: 4px;
 }
 
-.field-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 12px;
-}
-
 .optional {
   margin-left: 4px;
   color: var(--done);
   font-weight: 400;
   font-size: 0.8125rem;
-}
-
-.input-with-clear {
-  position: relative;
-}
-
-.input-with-clear input {
-  padding-right: 58px;
-}
-
-.clear-btn {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  background: var(--surface-3);
-  border: 0;
-  border-radius: 6px;
-  padding: 3px 8px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.clear-btn:hover {
-  color: var(--ink);
 }
 
 /* Phones: slide up from the bottom, full width */
@@ -1226,9 +1138,6 @@ section.selecting {
   }
   .sheet-body {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
-  }
-  .field-row {
-    grid-template-columns: 1fr;
   }
   .sheet-actions .btn {
     flex: 1;
@@ -1489,6 +1398,28 @@ section.selecting {
   .auth-modal::backdrop {
     animation: none;
   }
+}
+
+.char-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.full {
+  color: var(--danger);
+}
+
+/* Turnstile widget: takes no space unless it actually shows a check. */
+.captcha {
+  display: flex;
+  justify-content: center;
+}
+
+.captcha:empty {
+  display: none;
 }
 
 .guest-note {
@@ -2394,8 +2325,7 @@ section.selecting {
     transition: none !important;
   }
   .skel,
-  .select-menu,
-  .picker-panel {
+  .select-menu {
     animation: none;
   }
 }

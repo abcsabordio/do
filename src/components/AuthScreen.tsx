@@ -9,6 +9,11 @@ import {
   validateExistingPassword,
   validateNewPassword,
 } from '../auth/validation'
+import { formatWait, lockedUntil, nextSendAt, recordFailure, recordSend, recordSuccess } from '../auth/throttle'
+import Turnstile from '../auth/Turnstile'
+import { captchaEnabled } from '../auth/captcha'
+import type { CaptchaHandle } from '../auth/Turnstile'
+import { LIMITS } from '../lib/limits'
 import CodeInput from './CodeInput'
 
 export type AuthTab = 'signin' | 'signup'
@@ -57,6 +62,52 @@ export default function AuthScreen({
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [resendIn, setResendIn] = useState(0)
+
+  // Spam protection (see auth/throttle.ts and auth/Turnstile.tsx).
+  const [lockEnd, setLockEnd] = useState(() => lockedUntil())
+  const [clock, setClock] = useState(() => Date.now())
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaHandle>(null)
+  const lockLeft = Math.max(0, lockEnd - clock)
+
+  // Tick once a second while locked, so the countdown updates.
+  useEffect(() => {
+    if (lockEnd <= clock) return
+    const id = window.setTimeout(() => setClock(Date.now()), 1000)
+    return () => window.clearTimeout(id)
+  }, [lockEnd, clock])
+
+  /** Hand the current CAPTCHA token to one request (tokens only work once). */
+  function takeCaptcha(): { captchaToken?: string } {
+    const token = captchaToken
+    captchaRef.current?.reset()
+    return token ? { captchaToken: token } : {}
+  }
+
+  /** Returns an error message if this action must wait, else null. */
+  function blockedReason(kind: 'attempt' | 'email'): string | null {
+    const now = Date.now()
+    setClock(now)
+    const locked = lockedUntil(now)
+    if (locked) {
+      setLockEnd(locked)
+      return `Too many wrong attempts. Try again in ${formatWait(locked - now)}.`
+    }
+    if (kind === 'email') {
+      const at = nextSendAt(now)
+      if (at) return `You've asked for several emails. Wait ${formatWait(at - now)}, then try again.`
+    }
+    if (captchaEnabled && !captchaToken) return 'Still checking that you’re not a bot. Try again in a moment.'
+    return null
+  }
+
+  function failedAttempt() {
+    const until = recordFailure()
+    if (until) {
+      setLockEnd(until)
+      setClock(Date.now())
+    }
+  }
 
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
@@ -120,13 +171,13 @@ export default function AuthScreen({
     setConfirm('')
   }
 
-  function goToVerify(message: string) {
+  function goToVerify(message: string, resendAfter = RESEND_SECONDS) {
     setStep('verify')
     setCode(emptyCode())
     setFieldErrors({})
     setFormError(null)
     setNotice(message)
-    setResendIn(RESEND_SECONDS)
+    setResendIn(resendAfter)
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -149,6 +200,12 @@ export default function AuthScreen({
       return
     }
 
+    const blocked = blockedReason(isSignup ? 'email' : 'attempt')
+    if (blocked) {
+      setFormError(blocked)
+      return
+    }
+
     const cleanEmail = email.trim().toLowerCase()
     setBusy(true)
     try {
@@ -160,11 +217,25 @@ export default function AuthScreen({
   }
 
   async function signIn(cleanEmail: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
-    if (!error) return // App.tsx hears about the new session through onAuthStateChange.
+    const { error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+      options: takeCaptcha(),
+    })
+    if (!error) {
+      recordSuccess()
+      return // App.tsx hears about the new session through onAuthStateChange.
+    }
 
     if (error.code === 'email_not_confirmed') {
-      // They signed up but never confirmed. Send a fresh code and let them finish here.
+      // They signed up but never confirmed. Send a fresh code and let them
+      // finish here. (With CAPTCHA on, the token was just used up, so they
+      // tap "Resend code" themselves; same if they've had too many emails.)
+      if (captchaEnabled || nextSendAt()) {
+        goToVerify("Your email isn't confirmed yet. Enter the code from our email, or tap Resend code.", 0)
+        return
+      }
+      recordSend()
       const resent = await supabase.auth.resend({
         type: 'signup',
         email: cleanEmail,
@@ -180,16 +251,18 @@ export default function AuthScreen({
 
     setFormError(friendlyAuthError(error))
     if (error.code === 'invalid_credentials') {
+      failedAttempt()
       setPassword('')
       focusField('password')
     }
   }
 
   async function signUp(cleanEmail: string) {
+    recordSend()
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin, ...takeCaptcha() },
     })
 
     if (error) {
@@ -220,9 +293,15 @@ export default function AuthScreen({
   }
 
   async function verify(token: string) {
+    if (busy) return
     const problem = validateCode(token)
     if (problem) {
       setFieldErrors({ code: problem })
+      return
+    }
+    const blocked = blockedReason('attempt')
+    if (blocked) {
+      setFieldErrors({ code: blocked })
       return
     }
 
@@ -233,24 +312,34 @@ export default function AuthScreen({
       email: email.trim().toLowerCase(),
       token,
       type: 'email',
+      options: takeCaptcha(),
     })
     setBusy(false)
 
     if (error) {
+      if (error.code === 'otp_expired' || /token/i.test(error.message)) failedAttempt()
       setFieldErrors({ code: friendlyAuthError(error) })
       setCode(emptyCode())
+      return
     }
-    // On success App.tsx receives the session and leaves this screen.
+    recordSuccess()
+    // App.tsx receives the session and leaves this screen.
   }
 
   async function resendCode() {
+    const blocked = blockedReason('email')
+    if (blocked) {
+      setFormError(blocked)
+      return
+    }
+    recordSend()
     setBusy(true)
     setFormError(null)
     setFieldErrors({})
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin, ...takeCaptcha() },
     })
     setBusy(false)
     if (error) {
@@ -326,8 +415,10 @@ export default function AuthScreen({
               <p id="code-error" className="field-error" role="alert">{fieldErrors.code}</p>
             )}
 
-            <button className="btn primary block" type="submit" disabled={busy}>
-              {busy ? 'Checking…' : 'Verify and continue'}
+            <Turnstile ref={captchaRef} onToken={setCaptchaToken} />
+
+            <button className="btn primary block" type="submit" disabled={busy || lockLeft > 0}>
+              {lockLeft > 0 ? `Try again in ${formatWait(lockLeft)}` : busy ? 'Checking…' : 'Verify and continue'}
             </button>
           </form>
 
@@ -414,6 +505,7 @@ export default function AuthScreen({
               onBlur={() => blur('email')}
               autoComplete="email"
               placeholder="name@example.com"
+              maxLength={LIMITS.email}
               aria-invalid={!!showError('email') || undefined}
               aria-describedby={errorId('email')}
             />
@@ -431,6 +523,7 @@ export default function AuthScreen({
                 onChange={(e) => update('password', e.target.value)}
                 onBlur={() => blur('password')}
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
+                maxLength={LIMITS.password}
                 aria-invalid={!!showError('password') || undefined}
                 aria-describedby={errorId('password')}
               />
@@ -460,6 +553,7 @@ export default function AuthScreen({
                 onChange={(e) => update('confirm', e.target.value)}
                 onBlur={() => blur('confirm')}
                 autoComplete="new-password"
+                maxLength={LIMITS.password}
                 aria-invalid={!!showError('confirm') || undefined}
                 aria-describedby={errorId('confirm')}
               />
@@ -471,8 +565,16 @@ export default function AuthScreen({
 
           {formError && <p className="message error" role="alert">{formError}</p>}
 
-          <button className="btn primary block" type="submit" disabled={busy}>
-            {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}
+          <Turnstile ref={captchaRef} onToken={setCaptchaToken} />
+
+          <button className="btn primary block" type="submit" disabled={busy || (!isSignup && lockLeft > 0)}>
+            {!isSignup && lockLeft > 0
+              ? `Try again in ${formatWait(lockLeft)}`
+              : busy
+                ? 'Please wait…'
+                : isSignup
+                  ? 'Create account'
+                  : 'Sign in'}
           </button>
         </form>
 

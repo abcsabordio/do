@@ -6,6 +6,7 @@ import ReminderPicker from './ReminderPicker'
 import Select from './Select'
 import { useStore } from '../data/store'
 import { useNotifications } from '../lib/useNotifications'
+import { LIMITS } from '../lib/limits'
 
 export interface TaskDetails {
   title: string
@@ -20,9 +21,6 @@ interface Props {
   onSave: (details: TaskDetails) => Promise<void>
   onClose: () => void
 }
-
-const TITLE_MAX = 200
-const DESCRIPTION_MAX = 2000
 
 /**
  * A pop-up form for a task's title, description, reminder and repeat.
@@ -51,8 +49,11 @@ export default function TaskEditor({ mode, initial, onSave, onClose }: Props) {
     const next: typeof errors = {}
     if (!title.trim()) next.title = 'Give the task a name.'
     // A one-off reminder in the past would never go off. Repeating ones
-    // are fine: they roll forward to the next occurrence.
-    if (remindAt && repeat === 'none' && new Date(remindAt) <= new Date()) {
+    // are fine: they roll forward to the next occurrence. Only check when
+    // the reminder was changed, so a task whose reminder already went off
+    // can still be edited and saved.
+    const reminderChanged = remindAt !== initial.remind_at || repeat !== (initial.repeat ?? 'none')
+    if (reminderChanged && remindAt && repeat === 'none' && new Date(remindAt) <= new Date()) {
       next.remind = 'Pick a time in the future.'
     }
     return next
@@ -110,7 +111,7 @@ export default function TaskEditor({ mode, initial, onSave, onClose }: Props) {
               setTitle(e.target.value)
               if (errors.title) setErrors((p) => ({ ...p, title: undefined }))
             }}
-            maxLength={TITLE_MAX}
+            maxLength={LIMITS.taskTitle}
             placeholder="What needs doing?"
             aria-invalid={!!errors.title || undefined}
             aria-describedby={errors.title ? 'task-title-error' : undefined}
@@ -127,10 +128,19 @@ export default function TaskEditor({ mode, initial, onSave, onClose }: Props) {
             id="task-desc"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            maxLength={DESCRIPTION_MAX}
+            maxLength={LIMITS.taskNotes}
             rows={3}
             placeholder="Notes, links, details…"
+            aria-describedby="task-desc-count"
           />
+          {/* Only shown once you're close to the limit. */}
+          <p
+            id="task-desc-count"
+            className={`char-count${description.length >= LIMITS.taskNotes ? ' full' : ''}`}
+            hidden={description.length < LIMITS.taskNotes * 0.8}
+          >
+            {description.length} / {LIMITS.taskNotes}
+          </p>
         </div>
 
         <div className="field">

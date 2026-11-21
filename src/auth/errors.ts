@@ -31,6 +31,8 @@ export function friendlyAuthError(error: AuthErrorLike): string {
       return 'New sign-ups are turned off right now.'
     case 'user_banned':
       return 'This account has been suspended.'
+    case 'captcha_failed':
+      return "The bot check didn't go through. Reload the page and try again."
     case 'provider_disabled':
       return "Google sign-in isn't set up yet. Use your email and password for now."
   }

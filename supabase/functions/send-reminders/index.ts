@@ -39,14 +39,34 @@ interface Subscription {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+const CRON_SECRET = Deno.env.get('CRON_SECRET') ?? ''
+
+// Compares in constant time, so response timing can't leak the secret
+// one character at a time.
+function sameSecret(given: string | null): boolean {
+  if (!given || CRON_SECRET.length < 32) return false // unset/short secret: refuse everyone
+  const a = new TextEncoder().encode(given)
+  const b = new TextEncoder().encode(CRON_SECRET)
+  let diff = a.length ^ b.length
+  for (let i = 0; i < b.length; i++) diff |= (a[i] ?? 0) ^ b[i]
+  return diff === 0
+}
+
+// Push services reject payloads over ~4 KB, and a notification only shows a
+// couple of lines anyway.
+const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max - 1) + '…' : text)
+
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
+  if (req.method !== 'POST' || !sameSecret(req.headers.get('x-cron-secret'))) {
     return json({ error: 'Forbidden' }, 403)
   }
 
   // Grab everything that's due (this also moves repeating reminders on).
   const { data: due, error } = await supabase.rpc('claim_due_reminders')
-  if (error) return json({ error: error.message }, 500)
+  if (error) {
+    console.error('claim_due_reminders failed', error)
+    return json({ error: 'Could not load reminders' }, 500) // details go to the logs, not the caller
+  }
   const reminders = (due ?? []) as DueReminder[]
   if (reminders.length === 0) return json({ due: 0, sent: 0 })
 
@@ -55,7 +75,10 @@ Deno.serve(async (req) => {
     .from('push_subscriptions')
     .select('*')
     .in('user_id', userIds)
-  if (subsError) return json({ error: subsError.message }, 500)
+  if (subsError) {
+    console.error('Loading push subscriptions failed', subsError)
+    return json({ error: 'Could not load devices' }, 500)
+  }
 
   let sent = 0
   const expired: string[] = []
@@ -69,8 +92,8 @@ Deno.serve(async (req) => {
             await webpush.sendNotification(
               { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
               JSON.stringify({
-                title: r.title,
-                body: r.notes || 'Reminder',
+                title: cut(r.title, 120),
+                body: cut(r.notes || 'Reminder', 300),
                 tag: r.task_id, // a newer reminder for the same task replaces the old one
                 url: '/',
               }),

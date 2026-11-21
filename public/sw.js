@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Reminder', {
-      body: data.body || '',
+    self.registration.showNotification(String(data.title || 'Reminder').slice(0, 120), {
+      body: String(data.body || '').slice(0, 300),
       tag: data.tag,
       renotify: true,
       icon: '/do-icon-192.png',
@@ -24,9 +24,16 @@ self.addEventListener('push', (event) => {
 })
 
 // Tapping the notification opens the app (or focuses it if already open).
+// Only ever opens a page of this app, whatever the push message says.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  let url = '/'
+  try {
+    const wanted = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin)
+    if (wanted.origin === self.location.origin) url = wanted.pathname + wanted.search
+  } catch {
+    // keep '/'
+  }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const open = windows.find((w) => new URL(w.url).origin === self.location.origin)

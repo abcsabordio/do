@@ -10,7 +10,18 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# Secrets: never commit these
 *.local
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+
+# Supabase CLI working files
+supabase/.temp
+supabase/.branches
 
 # Editor directories and files
 .vscode/*

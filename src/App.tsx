@@ -49,16 +49,24 @@ function hasGuestData(): boolean {
   return tasks.length > 0 || groups.length > 0
 }
 
-// If an emailed confirmation link was expired or already used, Supabase sends
+// If an emailed confirmation link (or Google sign-in) failed, Supabase sends
 // the user back with the reason in the URL. Read it once, then tidy the URL.
+// Only our own wording is shown: anyone can craft a link with any text in it,
+// so displaying it as-is would let a phishing link "speak" for the app.
 const linkErrorOnLoad: string | null = (() => {
   const params = new URLSearchParams(window.location.hash.slice(1) || window.location.search)
-  const description = params.get('error_description')
-  if (!description) return null
+  if (!params.get('error') && !params.get('error_code')) return null
   window.history.replaceState(null, '', window.location.pathname)
-  return params.get('error_code') === 'otp_expired'
-    ? 'That confirmation link has expired or was already used. Sign in to get a new code.'
-    : description.replace(/\+/g, ' ')
+  switch (params.get('error_code')) {
+    case 'otp_expired':
+      return 'That confirmation link has expired or was already used. Sign in to get a new code.'
+    case 'provider_disabled':
+      return "Google sign-in isn't set up yet. Use your email and password for now."
+    default:
+      return params.get('error') === 'access_denied'
+        ? 'Sign-in was cancelled.'
+        : "That sign-in link didn't work. Please try again."
+  }
 })()
 
 // ---------- App ----------

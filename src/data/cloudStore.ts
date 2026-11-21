@@ -1,11 +1,36 @@
 import { supabase } from '../supabase'
+import { LIMITS } from '../lib/limits'
 import type { Task, TaskGroup } from '../types'
 import type { TaskStore } from './store'
 
+interface DbError {
+  message: string
+  code?: string
+}
+
+// Database rules (005_hardening.sql) → messages a person can act on.
+const CHECK_MESSAGES: Record<string, string> = {
+  tasks_title_length: `Task names can be 1 to ${LIMITS.taskTitle} characters.`,
+  tasks_notes_length: `Descriptions can be up to ${LIMITS.taskNotes} characters.`,
+  task_groups_name_length: `Group names can be 1 to ${LIMITS.groupName} characters.`,
+  tasks_remind_range: 'Pick a reminder date between 2000 and 2200.',
+}
+
+function friendlyDbError(error: DbError): string {
+  if (error.code === '23514') {
+    const rule = Object.keys(CHECK_MESSAGES).find((name) => error.message.includes(name))
+    return rule ? CHECK_MESSAGES[rule] : 'That value isn’t allowed.'
+  }
+  if (error.code === 'P0001') return error.message // our own limits, already readable
+  if (error.code === '42501') return "You don't have permission to change that. Try signing in again."
+  if (/failed to fetch|network/i.test(error.message)) return "Can't reach the server. Check your connection."
+  return error.message
+}
+
 // Supabase returns { data, error }. This turns an error into a thrown Error
 // so the store behaves like an ordinary async API.
-function check<T>(result: { data: T; error: { message: string } | null }): T {
-  if (result.error) throw new Error(result.error.message)
+function check<T>(result: { data: T; error: DbError | null }): T {
+  if (result.error) throw new Error(friendlyDbError(result.error))
   return result.data
 }
 

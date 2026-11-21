@@ -1,4 +1,4 @@
-// One-shot setup for reminder notifications (steps 3–6 of SETUP-NOTIFICATIONS.md).
+// One-shot setup for reminder notifications (see docs/NOTIFICATIONS.md).
 // Safe to run again: every step updates what's there instead of duplicating it.
 //
 // Usage (PowerShell), from the project folder:

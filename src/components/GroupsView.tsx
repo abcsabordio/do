@@ -5,6 +5,7 @@ import type { Task, TaskGroup } from '../types'
 import { SelectionScope } from '../lib/selection'
 import TaskList, { EmptyIcon, SkeletonRows } from './TaskList'
 import ConfirmDialog from './ConfirmDialog'
+import { LIMITS } from '../lib/limits'
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : 'Something went wrong.')
 
@@ -136,7 +137,7 @@ export default function GroupsView() {
             onChange={(e) => setName(e.target.value)}
             placeholder="New group, e.g. Groceries"
             aria-label="New group name"
-            maxLength={80}
+            maxLength={LIMITS.groupName}
             enterKeyHint="done"
           />
           <button

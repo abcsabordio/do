@@ -1,38 +1,37 @@
 // Checks run in the browser before anything is sent to Supabase.
 // Each returns an error message, or null when the value is fine.
 
+import { LIMITS } from '../lib/limits'
+
 // Not a full RFC check, just enough to catch typos like "me@gmail" or "me gmail.com".
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export function validateEmail(email: string): string | null {
   const value = email.trim()
   if (!value) return 'Enter your email address.'
+  if (value.length > LIMITS.email) return 'That email address is too long.'
   if (!EMAIL_RE.test(value)) return 'Enter a valid email address, like name@example.com.'
   return null
 }
 
-export interface PasswordRule {
-  label: string
-  test: (pw: string) => boolean
-}
-
-// Shown as a live checklist on the sign-up form.
-export const PASSWORD_RULES: PasswordRule[] = [
-  { label: 'At least 8 characters', test: (pw) => pw.length >= 8 },
-  { label: 'At least one letter', test: (pw) => /[A-Za-z]/.test(pw) },
-  { label: 'At least one number', test: (pw) => /\d/.test(pw) },
-]
+// Bytes, not characters: an emoji counts as 4.
+const byteLength = (s: string) => new TextEncoder().encode(s).length
 
 export function validateNewPassword(pw: string): string | null {
   if (!pw) return 'Choose a password.'
-  const failed = PASSWORD_RULES.find((rule) => !rule.test(pw))
-  return failed ? `Password needs: ${failed.label.toLowerCase()}.` : null
+  if (pw.length < LIMITS.passwordMin) return `Use at least ${LIMITS.passwordMin} characters.`
+  if (byteLength(pw) > LIMITS.password) return `Use ${LIMITS.password} characters or fewer.`
+  if (!/[A-Za-z]/.test(pw)) return 'Include at least one letter.'
+  if (!/\d/.test(pw)) return 'Include at least one number.'
+  return null
 }
 
 // Sign-in only checks that something was typed: older accounts may
 // predate the current rules, and the server decides if it's correct.
 export function validateExistingPassword(pw: string): string | null {
-  return pw ? null : 'Enter your password.'
+  if (!pw) return 'Enter your password.'
+  if (byteLength(pw) > LIMITS.password) return 'Incorrect email or password.'
+  return null
 }
 
 export function validateConfirm(pw: string, confirm: string): string | null {

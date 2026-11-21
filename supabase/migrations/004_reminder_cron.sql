@@ -1,5 +1,6 @@
 -- Runs the send-reminders Edge Function once a minute.
--- Run AFTER deploying the function (see SETUP-NOTIFICATIONS.md).
+-- Run AFTER deploying the function (see docs/NOTIFICATIONS.md).
+-- `npm run push:setup` does all of this for you; this file is the manual route.
 --
 -- Before running:
 --   1. Database → Extensions: enable "pg_cron" and "pg_net".
@@ -9,7 +10,7 @@
 --
 -- The secret is kept in Supabase Vault (encrypted), not in the job itself.
 
-select vault.create_secret('https://oismticxbywnmynxwwqd.supabase.co', 'project_url');
+select vault.create_secret('https://<PROJECT_REF>.supabase.co', 'project_url');
 select vault.create_secret('<CRON_SECRET>', 'reminder_cron_secret');
 
 select cron.schedule(

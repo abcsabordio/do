@@ -26,6 +26,7 @@ import ConfirmDialog from './ConfirmDialog'
 import { useUndo } from '../lib/undo'
 import { playCheck } from '../lib/sound'
 import { useSelectionScope } from '../lib/selection'
+import { LIMITS } from '../lib/limits'
 
 interface Props {
   // null = tasks that don't belong to any group (the main Tasks tab)
@@ -324,7 +325,7 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
           onChange={(e) => setTitle(e.target.value)}
           placeholder={placeholder ?? 'What do you need to do?'}
           aria-label="New task"
-          maxLength={200}
+          maxLength={LIMITS.taskTitle}
           enterKeyHint="done"
         />
         <button

@@ -1,4 +1,5 @@
-import type { Task, TaskGroup } from '../types'
+import type { Task, TaskChanges, TaskGroup } from '../types'
+import { LIMITS, clamp } from '../lib/limits'
 import type { TaskStore } from './store'
 
 /**
@@ -48,9 +49,13 @@ export function clearGuestData() {
   }
 }
 
-/** How many tasks a guest has stored on this device. */
-export function guestTaskCount(): number {
-  return readGuestData().tasks.length
+// Guest data never reaches the database, so apply its length rules here.
+// (It's also what keeps the later upload to the cloud from being rejected.)
+function cleanChanges<T extends TaskChanges>(changes: T): T {
+  const out = { ...changes }
+  if (out.title !== undefined) out.title = clamp(out.title, LIMITS.taskTitle)
+  if (out.notes) out.notes = clamp(out.notes, LIMITS.taskNotes)
+  return out
 }
 
 const newest = (a: { created_at: string }, b: { created_at: string }) =>
@@ -65,7 +70,8 @@ export const localStore: TaskStore = {
       .sort(newest)
   },
 
-  async addTask(input, groupId) {
+  async addTask(raw, groupId) {
+    const input = cleanChanges(raw)
     const data = readGuestData()
     const task: Task = {
       id: crypto.randomUUID(),
@@ -89,7 +95,8 @@ export const localStore: TaskStore = {
     return localStore.updateTasks([id], changes)
   },
 
-  async updateTasks(ids, changes) {
+  async updateTasks(ids, raw) {
+    const changes = cleanChanges(raw)
     const data = readGuestData()
     const targets = new Set(ids)
     data.tasks = data.tasks.map((t) => (targets.has(t.id) ? { ...t, ...changes } : t))
@@ -122,7 +129,7 @@ export const localStore: TaskStore = {
 
   async addGroup(name) {
     const data = readGuestData()
-    const group = { id: crypto.randomUUID(), name, created_at: new Date().toISOString() }
+    const group = { id: crypto.randomUUID(), name: clamp(name, LIMITS.groupName), created_at: new Date().toISOString() }
     data.groups.push(group)
     write(data)
     return { ...group, task_count: 0 }
