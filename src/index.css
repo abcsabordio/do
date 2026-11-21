@@ -389,26 +389,13 @@ input {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.quick-add-lead {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  flex-shrink: 0;
-  color: var(--done);
-  transition: color 0.15s;
-}
-
-.quick-add:focus-within .quick-add-lead {
-  color: var(--accent-text);
-}
-
 /* Overrides the shared input look: the box itself is the border. */
 .quick-add input {
   flex: 1;
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 10px 4px;
+  padding: 10px 6px 10px 10px;
   font-size: 1rem;
 }
 
@@ -433,16 +420,7 @@ input {
   transform: scale(0.92);
 }
 
-.quick-add-btn.details {
-  background: transparent;
-  color: var(--muted);
-}
-
-.quick-add-btn.details:hover {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
+/* Instant add, just left of Remind. */
 .quick-add-btn.submit {
   background: var(--accent);
   color: var(--accent-ink);
@@ -452,10 +430,44 @@ input {
   background: var(--accent-hover);
 }
 
+/* Nothing typed yet: still recognisably the add button, just quieter. */
 .quick-add-btn.submit:disabled {
-  background: var(--surface-3);
-  color: var(--done);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  opacity: 0.6;
   cursor: default;
+}
+
+/* "Remind": add with a reminder, repeat or description. A visible pill so
+   it reads as a button, not decoration. */
+.quick-add-remind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--accent-soft);
+  border: 0;
+  border-radius: 10px;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.quick-add-remind:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.quick-add-remind:active {
+  transform: scale(0.95);
+}
+
+.quick-add-remind svg {
+  flex-shrink: 0;
 }
 
 /* ---------- Task list ---------- */
@@ -589,10 +601,25 @@ input {
   width: 22px;
   height: 22px;
   margin-left: 6px;
+  padding: 0;
+  background: transparent;
   border: 2px solid var(--line-strong);
   border-radius: 6px;
   display: grid;
   place-items: center;
+  cursor: pointer;
+  /* Bigger invisible tap area than the 22px box, for fingers. */
+  position: relative;
+}
+
+.select-mark::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
+.select-mark:hover:not(.on) {
+  border-color: var(--accent);
 }
 
 .select-mark.on {
@@ -637,12 +664,24 @@ input {
 }
 
 .task-meta {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: 2px 12px;
   margin-top: 2px;
   color: var(--accent-text);
   font-size: 0.8125rem;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.meta-item svg {
+  flex-shrink: 0;
 }
 
 .task-meta.overdue {
@@ -970,8 +1009,8 @@ section.selecting {
 .group-section-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 8px 0 0;
+  gap: 2px;
+  padding: 0 8px 0 6px;
 }
 
 .group-toggle {
@@ -982,7 +1021,7 @@ section.selecting {
   gap: 10px;
   background: none;
   border: 0;
-  padding: 14px 0 14px 16px;
+  padding: 14px 0 14px 4px;
   text-align: left;
   cursor: pointer;
   color: var(--muted);
@@ -1031,18 +1070,33 @@ section.selecting {
   font-size: 0.9375rem;
 }
 
-.compact .quick-add-lead {
-  width: 30px;
-}
-
 .compact .quick-add-btn {
   width: 34px;
   height: 34px;
   border-radius: 8px;
 }
 
+/* Inside groups: icon-only Details to save room, same pill look. */
+.compact .quick-add-remind {
+  height: 34px;
+  padding: 0 9px;
+  border-radius: 8px;
+}
+
+.compact .quick-add-remind-label {
+  display: none;
+}
+
 .compact .empty-state {
   padding: 10px 0 4px;
+}
+
+.empty-state.done {
+  padding-top: 28px;
+}
+
+.compact .empty-state.done {
+  padding-top: 8px;
 }
 
 .compact .task-list {
@@ -1910,6 +1964,15 @@ section.selecting {
 
 .picker-main > span:nth-child(2) {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-main svg,
+.picker-main .chevron {
+  flex-shrink: 0;
 }
 
 .picker-trigger.has-value .picker-main {
@@ -2054,7 +2117,7 @@ section.selecting {
   transform: scale(0.94);
 }
 
-.step-value {
+.time-steppers .step-value {
   display: grid;
   place-items: center;
   width: 64px;
@@ -2075,20 +2138,20 @@ section.selecting {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.step-value::selection {
+.time-steppers .step-value::selection {
   background: var(--accent-soft);
 }
 
-.step-value[readonly] {
+.time-steppers .step-value[readonly] {
   cursor: pointer;
   caret-color: transparent;
 }
 
-.step-value.narrow {
+.time-steppers .step-value.narrow {
   font-size: 1.125rem;
 }
 
-.step-value:focus-visible {
+.time-steppers .step-value:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -2330,4 +2393,40 @@ section.selecting {
 /* The reminder picker's "Set" button: short label, comfortable tap size. */
 .dt-set {
   min-width: 84px;
+}
+
+/* ---------- Reordering groups ---------- */
+
+/* Where the dragged group will land: a faint outline of it. */
+.group-section.drag-placeholder {
+  opacity: 0.35;
+  border-style: dashed;
+}
+
+/* The header that follows your finger. */
+.group-section.drag-overlay {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  box-shadow: 0 14px 36px var(--shadow);
+  cursor: grabbing;
+}
+
+.group-section.drag-overlay .drag-handle {
+  cursor: grabbing;
+  color: var(--accent-text);
+}
+
+/* While sorting, the stack of headers is tighter. */
+.group-stack.sorting {
+  gap: 8px;
+}
+
+/* A group picked in selection mode (long-press a group header). */
+.group-section.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.group-section-head .select-mark {
+  margin: 0 5px 0 6px;
 }

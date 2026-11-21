@@ -262,7 +262,7 @@ function PickerDialog({ initial, hasValue, now, onSet, onRemove, onClose }: Dial
             </div>
           </div>
 
-          <TimeColumns value={draft} onChange={(h, m) => setDraft(at(draft, h, m))} />
+          <TimeColumns value={draft} onChange={(h, m) => setDraft((d) => at(d, h, m))} />
         </div>
 
         {past && <p className="dt-warning">That time has already passed. Pick a later time.</p>}
@@ -317,12 +317,13 @@ function TimeColumns({ value, onChange }: { value: Date; onChange: (h: number, m
   // Typed values. Anything out of range is ignored (the old value comes back).
   const hourTyping: Typing = {
     // "1" could become 10–12 (or 1x in 24h), so wait; "5" can't, so it's done.
-    isComplete: (raw) => raw.length === 2 || Number(raw[0]) >= (USES_12H ? 2 : 3),
+    // "1" or "2" could still become 10–12 or 20–23, so wait; "5" can't.
+    isComplete: (raw) => raw.length === 2 || Number(raw[0]) >= 3,
     commit: (raw) => {
       const n = Number(raw)
-      if (USES_12H ? n >= 1 && n <= 12 : n >= 0 && n <= 23) {
-        onChange(USES_12H ? (n % 12) + (pm ? 12 : 0) : n, m)
-      }
+      if (n >= 1 && n <= 12) onChange((n % 12) + (pm ? 12 : 0), m) // keeps AM/PM
+      else if (n >= 13 && n <= 23) onChange(n, m) // 24-hour style: 17 → 5 PM
+      else if (n === 0) onChange(0, m) // 0 → 12 AM
     },
     next: minuteRef,
   }
@@ -403,11 +404,20 @@ function Stepper({
   inputRef?: RefObject<HTMLInputElement | null>
 }) {
   // What's been typed but not applied yet (null = show the real value).
-  const [draft, setDraft] = useState<string | null>(null)
+  // Mirrored in a ref: when a complete number moves focus to the next box,
+  // this box's blur handler runs straight away, before React re-renders, and
+  // must see that the draft was already applied (else "17" became "01").
+  const [draft, setDraftState] = useState<string | null>(null)
+  const draftRef = useRef<string | null>(null)
+  function setDraft(value: string | null) {
+    draftRef.current = value
+    setDraftState(value)
+  }
 
   function commitDraft() {
-    if (typing && draft) typing.commit(draft)
+    const pending = draftRef.current
     setDraft(null)
+    if (typing && pending) typing.commit(pending)
   }
 
   // Latest onStep, so a held button keeps stepping from the newest value.
@@ -487,8 +497,9 @@ function Stepper({
         // Select everything on focus, so typing replaces the old value.
         onFocus={(e) => e.currentTarget.select()}
         onMouseUp={(e) => e.preventDefault()} // keep the selection after a click
-        onClick={() => {
+        onClick={(e) => {
           if (!typing && onLetter) stepRef.current(1) // tap AM/PM to flip it
+          else e.currentTarget.select() // tapping again starts a fresh number
         }}
         onChange={(e) => {
           if (!typing) return

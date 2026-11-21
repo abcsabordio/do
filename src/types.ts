@@ -21,6 +21,8 @@ export interface TaskGroup {
   id: string
   name: string
   created_at: string
+  // Manual sort order: lower = higher in the list. Null on old rows.
+  position?: number | null
   // How many tasks are in the group. Filled in by the store when listing.
   task_count: number
 }

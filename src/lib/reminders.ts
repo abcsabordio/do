@@ -1,4 +1,4 @@
-import type { Repeat, Task } from '../types'
+import type { Repeat } from '../types'
 
 // ---------- Ordering ----------
 
@@ -7,11 +7,13 @@ import type { Repeat, Task } from '../types'
  * Very old tasks have no position yet, so fall back to "newest first",
  * using the same formula as the database migration.
  */
-export function sortKey(t: Pick<Task, 'position' | 'created_at'>): number {
+export function sortKey(t: { position?: number | null; created_at: string }): number {
   return t.position ?? -Date.parse(t.created_at) / 1000
 }
 
-export const byPosition = (a: Task, b: Task) => sortKey(a) - sortKey(b)
+/** Sort tasks or groups by their manual order. */
+export const byPosition = (a: { position?: number | null; created_at: string }, b: typeof a) =>
+  sortKey(a) - sortKey(b)
 
 // ---------- Reminder times ----------
 

@@ -22,6 +22,7 @@ In Supabase → **SQL Editor → New query**, run these files in order (each onc
 1. [`002_task_details.sql`](../supabase/migrations/002_task_details.sql)
 2. [`003_push_reminders.sql`](../supabase/migrations/003_push_reminders.sql)
 3. [`005_hardening.sql`](../supabase/migrations/005_hardening.sql)
+4. [`006_group_order.sql`](../supabase/migrations/006_group_order.sql)
 
 ### 2. Create VAPID keys
 

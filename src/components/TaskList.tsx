@@ -313,35 +313,18 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
 
   return (
     <section className={[selecting && 'selecting', compact && 'compact'].filter(Boolean).join(' ') || undefined}>
+      {/* text · [+] add instantly · [🔔 Remind] add with a reminder, repeat
+          or description (opens the full form). */}
       <form className="quick-add" onSubmit={quickAdd}>
-        <span className="quick-add-lead" aria-hidden="true">
-          <svg viewBox="0 0 20 20" width="18" height="18">
-            <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          </svg>
-        </span>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={placeholder ?? 'What do you need to do?'}
+          placeholder={placeholder ?? 'What needs doing?'}
           aria-label="New task"
           maxLength={LIMITS.taskTitle}
           enterKeyHint="done"
         />
-        <button
-          type="button"
-          className="quick-add-btn details"
-          onClick={() =>
-            setEditing({
-              mode: 'create',
-              initial: { title: title.trim(), notes: null, remind_at: null, repeat: null },
-            })
-          }
-          aria-label="Add task with details and reminder"
-          title="Add details and reminder"
-        >
-          <DetailsIcon />
-        </button>
         <button
           className="quick-add-btn submit"
           type="submit"
@@ -352,6 +335,21 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
           <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
             <path d="M10 4.5v11M4.5 10h11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
+        </button>
+        <button
+          type="button"
+          className="quick-add-remind"
+          onClick={() =>
+            setEditing({
+              mode: 'create',
+              initial: { title: title.trim(), notes: null, remind_at: null, repeat: null },
+            })
+          }
+          aria-label="Add task with a reminder"
+          title="Add with a reminder, repeat or description"
+        >
+          <BellIcon />
+          <span className="quick-add-remind-label">Remind</span>
         </button>
       </form>
 
@@ -369,7 +367,10 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
             </div>
           )}
           {openTasks.length === 0 && finishedTasks.length > 0 && (
-            <p className="empty">All done. Add another task above.</p>
+            <div className="empty-state done" role="status">
+              <AllDoneIcon size={compact ? 36 : 56} />
+              <p className="empty-title">All done. Add another task above.</p>
+            </div>
           )}
           {openTasks.length > 1 && !selecting && !compact && (
             <p className="hint subtle">Drag ⠿ to reorder · Long-press a task to select several</p>
@@ -516,12 +517,21 @@ export function EmptyIcon({ size }: { size: number }) {
   )
 }
 
-function DetailsIcon() {
+/** A check inside a circle, shown when every task is finished. */
+function AllDoneIcon({ size }: { size: number }) {
   return (
-    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-      <path d="M3.5 5.5h9M3.5 10h6M3.5 14.5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="14.5" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M14.5 11.4V13l1 .8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="24" cy="24" r="20" fill="var(--ok-bg)" stroke="var(--ok)" strokeWidth="2.5" />
+      <path d="M15.5 24.5l6 6 11-12" stroke="var(--ok)" strokeWidth="3" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+      <path d="M10 2.8a4.5 4.5 0 0 0-4.5 4.5v3L4 13.3h12l-1.5-3v-3A4.5 4.5 0 0 0 10 2.8Z" />
+      <path d="M8.2 15.8a1.9 1.9 0 0 0 3.6 0" strokeLinecap="round" />
     </svg>
   )
 }

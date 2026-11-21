@@ -23,6 +23,7 @@ export async function syncGuestData(): Promise<number> {
       id: g.id,
       name: clamp(g.name.trim(), LIMITS.groupName) || 'Untitled group',
       created_at: g.created_at,
+      position: g.position ?? null,
     }))
     const { error } = await supabase
       .from('task_groups')

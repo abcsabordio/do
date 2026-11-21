@@ -127,19 +127,35 @@ export const localStore: TaskStore = {
     return { groups, tasks: readGuestData().tasks.filter((t) => t.group_id && ids.has(t.group_id)) }
   },
 
-  async addGroup(name) {
+  async addGroup(name, position) {
     const data = readGuestData()
-    const group = { id: crypto.randomUUID(), name: clamp(name, LIMITS.groupName), created_at: new Date().toISOString() }
+    const group = {
+      id: crypto.randomUUID(),
+      name: clamp(name, LIMITS.groupName),
+      created_at: new Date().toISOString(),
+      position: position ?? null,
+    }
     data.groups.push(group)
     write(data)
     return { ...group, task_count: 0 }
   },
 
-  async deleteGroup(id) {
-    // Same behaviour as the cloud: deleting a group deletes its tasks.
+  async updateGroup(id, changes) {
     const data = readGuestData()
-    data.groups = data.groups.filter((g) => g.id !== id)
-    data.tasks = data.tasks.filter((t) => t.group_id !== id)
+    data.groups = data.groups.map((g) => (g.id === id ? { ...g, ...changes } : g))
+    write(data)
+  },
+
+  async deleteGroup(id) {
+    return localStore.deleteGroups([id])
+  },
+
+  async deleteGroups(ids) {
+    // Same behaviour as the cloud: deleting a group deletes its tasks.
+    const targets = new Set(ids)
+    const data = readGuestData()
+    data.groups = data.groups.filter((g) => !targets.has(g.id))
+    data.tasks = data.tasks.filter((t) => !t.group_id || !targets.has(t.group_id))
     write(data)
   },
 }

@@ -70,7 +70,14 @@ export function TaskRow({
         ))}
 
       {selecting ? (
-        <span className={`select-mark${selected ? ' on' : ''}`} aria-hidden="true" />
+        <button
+          type="button"
+          className={`select-mark${selected ? ' on' : ''}`}
+          data-no-longpress
+          onClick={() => onToggleSelect(task)}
+          aria-pressed={selected}
+          aria-label={`Select "${task.title}"`}
+        />
       ) : (
         <input
           type="checkbox"
@@ -138,12 +145,19 @@ function ReminderLine({ task, now }: { task: Task; now: number }) {
   const overdue = !task.is_done && !task.repeat && next < current
 
   return (
+    // Two pieces that each stay on one line, so a long reminder wraps
+    // between them instead of mid-phrase on narrow phones.
     <span className={`task-meta${overdue ? ' overdue' : ''}`}>
-      <BellIcon />
-      <span>
+      <span className="meta-item">
+        <BellIcon />
         {formatReminder(next, current)}
-        {task.repeat && ` · ${repeatLabel(task.repeat, start)}`}
       </span>
+      {task.repeat && (
+        <span className="meta-item">
+          <RepeatIcon />
+          {repeatLabel(task.repeat, start)}
+        </span>
+      )}
     </span>
   )
 }
@@ -157,6 +171,15 @@ function GripIcon() {
           <circle cx="10" cy={y} r="1.3" />
         </g>
       ))}
+    </svg>
+  )
+}
+
+function RepeatIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7.2V6.5A2.5 2.5 0 0 1 5.5 4H12m0 0-2-2m2 2-2 2" />
+      <path d="M13 8.8v.7A2.5 2.5 0 0 1 10.5 12H4m0 0 2 2m-2-2 2-2" />
     </svg>
   )
 }

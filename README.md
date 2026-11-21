@@ -3,7 +3,8 @@
 A to-do app with reminders that runs in the browser, installs on phones, and
 syncs between devices through a free Supabase backend.
 
-- **Tasks and groups.** Add, edit, tick off, drag to reorder, long-press to select several.
+- **Tasks and groups.** Add, edit, tick off, drag to reorder, long-press to select several
+  (tasks to tick off or delete together; groups to delete together).
 - **Reminders.** A date and time per task, repeating daily, weekly or monthly, with
   push notifications even when the app is closed.
 - **Accounts or guest mode.** Sign in with email (6-digit code or link) or Google,
@@ -40,7 +41,7 @@ cp .env.example .env.local      # Windows: copy .env.example .env.local
 1. Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local`
    (Supabase → **Project Settings → API**).
 2. In Supabase → **SQL Editor**, run the files in [`supabase/migrations`](supabase/migrations)
-   **in order**: `001`, `002`, `003`, `005`. (`004` is optional; see
+   **in order**: `001`, `002`, `003`, `005`, `006`. (`004` is optional; see
    [Notifications](docs/NOTIFICATIONS.md).)
 3. Start the app:
 
@@ -159,8 +160,10 @@ is interrupted and retried, nothing is duplicated.
 
 ### Ordering
 
-Each task has a `position` number; lower is higher in the list. Dragging a task
-gives it the average of its new neighbours' positions, so only that one row is saved.
+Tasks and groups each have a `position` number; lower is higher in the list.
+Dragging one gives it the average of its new neighbours' positions, so only that
+one row is saved. While a group is being dragged, every group shows only its
+header (so the list is short), and they reopen when it's dropped.
 
 ### Reminders
 
@@ -180,8 +183,9 @@ Run in Supabase → SQL Editor, in order. Each file is safe to run again.
 | [`003_push_reminders.sql`](supabase/migrations/003_push_reminders.sql) | Time zones, `next_notify_at`, device table, `claim_due_reminders()` |
 | [`004_reminder_cron.sql`](supabase/migrations/004_reminder_cron.sql) | Every-minute job (or let `npm run push:setup` do it) |
 | [`005_hardening.sql`](supabase/migrations/005_hardening.sql) | Security: strict row-level security, length limits, row caps, private functions |
+| [`006_group_order.sql`](supabase/migrations/006_group_order.sql) | Lets groups be dragged into any order (`task_groups.position`) |
 
-**Tables:** `task_groups` (id, user_id, name, created_at), `tasks` (id, user_id,
+**Tables:** `task_groups` (id, user_id, name, created_at, position), `tasks` (id, user_id,
 group_id, title, notes, is_done, created_at, completed_at, remind_at, repeat, tz,
 position, next_notify_at), `push_subscriptions` (one row per device with
 notifications on). Deleting a group deletes its tasks; deleting an account deletes everything.
@@ -276,7 +280,7 @@ function. From the project folder, with PostgreSQL's `bin` folder on your PATH:
 ```bash
 createdb todo_test
 psql -d todo_test -v ON_ERROR_STOP=1 -f tests/db/supabase-stub.sql
-for f in 002_task_details 003_push_reminders 005_hardening; do
+for f in 002_task_details 003_push_reminders 005_hardening 006_group_order; do
   psql -d todo_test -v ON_ERROR_STOP=1 -f supabase/migrations/$f.sql
 done
 psql -d todo_test -f tests/db/behaviour.sql | grep -E "PASS|FAIL"
@@ -289,7 +293,7 @@ Every line should start with `PASS`. **Never run `supabase-stub.sql` against Sup
 
 | Message | Fix |
 |---|---|
-| `Could not find the 'tz' column … in the schema cache` (or `remind_at`, `position`) | A migration hasn't been run. Run `002`, `003` and `005` in order. |
+| `Could not find the 'tz' column … in the schema cache` (or `remind_at`, `position`) | A migration hasn't been run. Run `002`, `003`, `005` and `006` in order. |
 | `Missing Supabase settings` on start | `.env.local` is missing or incomplete. Copy `.env.example` and fill it in, then restart `npm run dev`. |
 | Sign-up email is Supabase's plain default | The template didn't save, or it contains invalid `{{ }}`. Run `npm run email:push`. |
 | Code in the email is 8 digits | Same as above; the script also sets the length to 6. |

@@ -22,8 +22,12 @@ export interface TaskStore {
   listGroups(): Promise<TaskGroup[]>
   // Every group plus all of their tasks, in a single request.
   listGroupsWithTasks(): Promise<{ groups: TaskGroup[]; tasks: Task[] }>
-  addGroup(name: string): Promise<TaskGroup>
+  addGroup(name: string, position?: number): Promise<TaskGroup>
+  // Only the order can change for now (dragging groups).
+  updateGroup(id: string, changes: { position: number }): Promise<void>
   deleteGroup(id: string): Promise<void>
+  // Deletes several groups (and their tasks) at once.
+  deleteGroups(ids: string[]): Promise<void>
 }
 
 export const StoreContext = createContext<TaskStore | null>(null)

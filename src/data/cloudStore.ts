@@ -96,16 +96,24 @@ export const cloudStore: TaskStore = {
     }
   },
 
-  async addGroup(name) {
+  async addGroup(name, position) {
     const result = await supabase
       .from('task_groups')
-      .insert({ name })
+      .insert({ name, position })
       .select('*, tasks(count)')
       .single()
     return toGroup(check(result) as GroupRow)
   },
 
+  async updateGroup(id, changes) {
+    check(await supabase.from('task_groups').update(changes).eq('id', id))
+  },
+
   async deleteGroup(id) {
     check(await supabase.from('task_groups').delete().eq('id', id))
+  },
+
+  async deleteGroups(ids) {
+    check(await supabase.from('task_groups').delete().in('id', ids))
   },
 }
