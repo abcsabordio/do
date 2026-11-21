@@ -2,9 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/do-icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/do-icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>todo-app</title>
+    <meta name="theme-color" content="#0e1013" />
+    <!-- Lets the app be installed to a phone's home screen (required for
+         notifications on iPhone). -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="To Do" />
+    <script>
+      // Apply the saved theme before the page paints, so light mode
+      // doesn't flash dark on load. (Kept in sync with src/lib/theme.ts.)
+      try {
+        if (localStorage.getItem('todo.theme') === 'light') {
+          document.documentElement.dataset.theme = 'light'
+          document.querySelector('meta[name="theme-color"]').content = '#f3f4f6'
+        }
+      } catch (e) {}
+    </script>
+    <title>To Do</title>
   </head>
   <body>
     <div id="root"></div>

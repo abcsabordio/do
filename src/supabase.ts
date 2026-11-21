@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-)
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+
+if (!url || !key) {
+  throw new Error(
+    'Missing Supabase settings. Copy .env.example to .env.local and fill in your project URL and public key, then restart npm run dev.'
+  )
+}
+
+export const supabase = createClient(url, key)

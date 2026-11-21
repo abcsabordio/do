@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 314 160" role="img" aria-label="Do">
+  <!-- D -->
+  <path d="M40 30 H80 A50 50 0 0 1 80 130 H40 Z" fill="none" stroke="#1a2238" stroke-width="28" stroke-linejoin="round"/>
+  <!-- o: a checked circle, the same shape as the task checkbox -->
+  <circle cx="224" cy="80" r="50" fill="none" stroke="#1a2238" stroke-width="28"/>
+  <path d="M206 82 L220 96 L246 66" fill="none" stroke="#3b4eff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
