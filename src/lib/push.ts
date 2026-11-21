@@ -11,7 +11,14 @@ import { supabase } from '../supabase'
  * (see localReminders.ts). We just need the browser's permission.
  */
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
+// Hosting dashboards make it easy to paste the key with quotes, spaces or a
+// line break around it; strip those so they can't break decoding.
+const VAPID_PUBLIC_KEY =
+  ((import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ?? '').replace(/["'\s]/g, '') || undefined
+
+const BAD_KEY_MESSAGE =
+  "Notifications can't be turned on: the site's VITE_VAPID_PUBLIC_KEY setting isn't a valid public key. " +
+  'Copy the Public Key again (no quotes or spaces) into your hosting settings and redeploy.'
 const LOCAL_KEY = 'todo.localNotify'
 
 export type NotifyState =
@@ -53,9 +60,19 @@ async function askPermission() {
 }
 
 // The VAPID key is base64url text; the browser wants raw bytes.
+// A real public key is 65 bytes starting with 0x04. Anything else (e.g. the
+// private key pasted by mistake) gets a clear message instead of a crash.
 function keyBytes(base64: string): Uint8Array<ArrayBuffer> {
-  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(padded)
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(base64)) throw new Error(BAD_KEY_MESSAGE)
+  const clean = base64.replace(/=+$/, '')
+  const padded = (clean + '='.repeat((4 - (clean.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+  let raw: string
+  try {
+    raw = atob(padded)
+  } catch {
+    throw new Error(BAD_KEY_MESSAGE)
+  }
+  if (raw.length !== 65 || raw.charCodeAt(0) !== 4) throw new Error(BAD_KEY_MESSAGE)
   const bytes = new Uint8Array(new ArrayBuffer(raw.length))
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
   return bytes

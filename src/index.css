@@ -2118,9 +2118,6 @@ section.selecting {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  .dt-actions .btn.primary {
-    flex: 1;
-  }
 }
 
 /* Quick picks: one row of pills that scrolls sideways if it doesn't fit. */
@@ -2328,4 +2325,9 @@ section.selecting {
   .select-menu {
     animation: none;
   }
+}
+
+/* The reminder picker's "Set" button: short label, comfortable tap size. */
+.dt-set {
+  min-width: 84px;
 }

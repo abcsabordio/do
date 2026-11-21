@@ -60,7 +60,7 @@ const sameDay = (a: Date, b: Date) =>
 
 /** "Today, 9:00 AM", "Tomorrow, 9:00 AM" or "Sat, Nov 22, 9:00 AM". */
 export function formatReminder(date: Date, now = new Date()): string {
-  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const time = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })
   const tomorrow = new Date(now)
   tomorrow.setDate(now.getDate() + 1)
 

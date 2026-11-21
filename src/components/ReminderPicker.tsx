@@ -29,10 +29,11 @@ const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
 // Does this person's locale use a 12-hour clock (with AM/PM)?
-const USES_12H = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 ?? false
+// Always a 12-hour clock with AM/PM, whatever the phone's language default is.
+const USES_12H = true
 
 const shortTime = (d: Date) =>
-  d.toLocaleTimeString(undefined, { hour: 'numeric', minute: d.getMinutes() ? '2-digit' : undefined })
+  d.toLocaleTimeString(undefined, { hour: 'numeric', minute: d.getMinutes() ? '2-digit' : undefined, hour12: true })
 
 /** One-tap choices at the top of the picker. */
 function presets(now: Date) {
@@ -276,8 +277,8 @@ function PickerDialog({ initial, hasValue, now, onSet, onRemove, onClose }: Dial
           <button type="button" className="btn ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn primary" onClick={() => onSet(draft)}>
-            Set reminder
+          <button type="button" className="btn primary dt-set" onClick={() => onSet(draft)} aria-label="Set reminder">
+            Set
           </button>
         </div>
       </div>
