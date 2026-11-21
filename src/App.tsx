@@ -179,16 +179,16 @@ export default function App() {
           </>
         }
         banner={
-          <p className="hint">
-            <svg className="hint-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <p className="hint guest-hint">
+            <svg className="hint-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
               <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
               <path d="M8 7v4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               <circle cx="8" cy="4.6" r="1" fill="currentColor" />
             </svg>
             <span>
-              You're using guest mode. Tasks are saved on this device only.
+              Guest mode: tasks stay on this device.
               <br />
-              Create an account to sync them across devices.
+              Sign up to sync them.
             </span>
           </p>
         }

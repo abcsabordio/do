@@ -313,7 +313,7 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
 
   return (
     <section className={[selecting && 'selecting', compact && 'compact'].filter(Boolean).join(' ') || undefined}>
-      {/* text · [+] add instantly · [🔔 Remind] add with a reminder, repeat
+      {/* text · [+] add instantly · [🔔] add with a reminder, repeat
           or description (opens the full form). */}
       <form className="quick-add" onSubmit={quickAdd}>
         <input
@@ -349,7 +349,6 @@ export default function TaskList({ groupId, compact = false, placeholder, onCoun
           title="Add with a reminder, repeat or description"
         >
           <BellIcon />
-          <span className="quick-add-remind-label">Remind</span>
         </button>
       </form>
 

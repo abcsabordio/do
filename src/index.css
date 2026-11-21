@@ -438,15 +438,15 @@ input {
   cursor: default;
 }
 
-/* "Remind": add with a reminder, repeat or description. A visible pill so
-   it reads as a button, not decoration. */
+/* Bell: add with a reminder, repeat or description. A tinted square so it
+   reads as a button, not decoration. */
 .quick-add-remind {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
+  width: 40px;
   height: 40px;
-  padding: 0 12px;
+  padding: 0;
   background: var(--accent-soft);
   border: 0;
   border-radius: 10px;
@@ -829,6 +829,12 @@ input {
   flex-shrink: 0;
 }
 
+.hint.guest-hint {
+  gap: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .hint.subtle {
   justify-content: center;
   margin: -6px 0 10px;
@@ -1076,15 +1082,10 @@ section.selecting {
   border-radius: 8px;
 }
 
-/* Inside groups: icon-only Details to save room, same pill look. */
 .compact .quick-add-remind {
+  width: 34px;
   height: 34px;
-  padding: 0 9px;
   border-radius: 8px;
-}
-
-.compact .quick-add-remind-label {
-  display: none;
 }
 
 .compact .empty-state {
